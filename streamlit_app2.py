@@ -1,40 +1,14 @@
 import streamlit as st
 
-st.header('st.button')
+st.header('st.slider')
 
-if st.button('Say hello'):
-     st.write('Why hello there')
-else:
-     st.write('Goodbye')
+# 単一の数値
+age = st.slider('あなたの年齢を選んでください', 0, 100, 25)
+st.write("あなたの年齢:", age)
 
-import numpy as np
-import altair as alt
-import pandas as pd
-import streamlit as st
-
-st.header('st.write')
-
-#例1
-st.write('Hello, *World!* :sunglasses:')
-
-#例2
-st.write(1234)
-
-#例3
-df = pd.DataFrame({
-     'first column': [1, 2, 3, 4],
-     'second column': [10, 20, 30, 40]
-     })
-st.write(df)
-
-#例4
-st.write('Below is a DataFrame:', df, 'Above is a dataframe.')
-
-#例5
-df2 = pd.DataFrame(
-     np.random.randn(200, 3),
-     columns=['a', 'b', 'c'])
-c = alt.Chart(df2).mark_circle().encode(
-     x='a', y='b', size='c', color='c', tooltip=['a', 'b', 'c'])
-st.write(c)
-
+# 範囲（タプル）
+values = st.slider(
+    '範囲を選んでください',
+    0.0, 100.0, (25.0, 75.0)
+)
+st.write('選択した範囲:', values)
