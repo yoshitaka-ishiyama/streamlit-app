@@ -1,22 +1,28 @@
+# ============================
+# Step0: import
+# ============================
+import os
+import re  # 正規表現（文字列の加工・分割）
+import pandas as pd
+import numpy as np
 import streamlit as st
+
+# .env ファイルから環境変数を読み込む（ローカル開発用：APIキーなど）
+from dotenv import load_dotenv  
+
+# TF-IDF（文章を数値ベクトルに変換する検索エンジンの中核）
+from sklearn.feature_extraction.text import TfidfVectorizer  
+
+# ベクトル同士の類似度（cosine類似度）を計算 → 「どの記事が近いか」を測る
+from sklearn.metrics.pairwise import cosine_similarity  
+
+# Google Gemini API をPythonから呼び出す公式SDK（LLM回答生成用）
+import google.generativeai as genai
 
 # ============================
 # Step0: アプリ初期化（Streamlit設定）
 # ============================
 st.set_page_config(page_title="RAG Chatbot (TF-IDF + Gemini)", layout="centered")
-
-# ============================
-# Step0: import
-# ============================
-import os
-import re
-import pandas as pd
-import numpy as np
-
-from dotenv import load_dotenv
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import google.generativeai as genai
 
 # ============================
 # Step0: 検索パラメータ（固定でOK）
@@ -37,16 +43,59 @@ if not GOOGLE_API_KEY:
 # ============================
 # Step1: Gemini API（LLM）準備
 # ============================
+# ▼ Geminiモデルを一度だけ生成（毎回作らない＝高速化）
 @st.cache_resource
 def get_gemini_model(api_key: str):
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel("gemini-2.5-flash-lite")
+    """
+    Geminiモデルを初期化して返す関数。
 
+    役割：
+    1. APIキーでGeminiを認証
+    2. 使用するモデル（gemini-2.5-flash-lite）を指定
+    3. Streamlitのcache_resourceで「1回だけ生成」して再利用（超重要）
+
+    Returns
+    -------
+    GenerativeModel
+        Geminiのモデルインスタンス
+    """
+    genai.configure(api_key=api_key)   # APIキー設定（ログイン）
+    return genai.GenerativeModel("gemini-2.5-flash-lite")  # モデル生成
+
+
+# ▼ Geminiに質問して回答テキストを取得する薄いラッパー関数
 def gemini_ask(model, prompt: str) -> str:
+    """
+    Geminiにプロンプトを投げて回答テキストを返す関数。
+
+    役割：
+    1. 空入力対策
+    2. model.generate_content() 呼び出し
+    3. textだけ安全に取り出して返却
+
+    Parameters
+    ----------
+    model : GenerativeModel
+        get_gemini_model()で生成したモデル
+    prompt : str
+        LLMに渡す質問文（RAGプロンプト）
+
+    Returns
+    -------
+    str
+        Geminiの回答テキスト
+    """
+
     prompt = (prompt or "").strip()
+
+    # 空文字なら無駄にAPIを叩かない
     if not prompt:
         return ""
+
+    # Gemini API呼び出し
     resp = model.generate_content(prompt)
+
+    # resp.text が無いケースもあるため安全に取得
     return getattr(resp, "text", "") or ""
 
 # ============================
